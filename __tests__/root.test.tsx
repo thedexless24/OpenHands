@@ -804,6 +804,17 @@ describe("App root document links", () => {
     });
   });
 
+  it("declares the web app manifest used for PWA installability", () => {
+    // Act
+    const documentLinks = links();
+
+    // Assert
+    expect(documentLinks).toContainEqual({
+      rel: "manifest",
+      href: "/site.webmanifest",
+    });
+  });
+
   it("prefixes document links when Canvas is mounted under a base path", () => {
     // Arrange
     vi.stubEnv("VITE_BASE_PATH", "/canvas");
@@ -816,6 +827,10 @@ describe("App root document links", () => {
       rel: "icon",
       type: "image/svg+xml",
       href: "/canvas/favicon.svg",
+    });
+    expect(documentLinks).toContainEqual({
+      rel: "manifest",
+      href: "/canvas/site.webmanifest",
     });
 
     vi.unstubAllEnvs();

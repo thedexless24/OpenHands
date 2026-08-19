@@ -60,6 +60,21 @@ function ColorThemeApplier() {
   return null;
 }
 
+/**
+ * Registers the pass-through service worker that, together with the web app
+ * manifest, makes the app installable as a PWA. No-op on insecure origins and
+ * browsers without service worker support.
+ */
+function ServiceWorkerRegistrar() {
+  React.useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    navigator.serviceWorker
+      .register(buildAgentCanvasPath("/sw.js"))
+      .catch(() => undefined);
+  }, []);
+  return null;
+}
+
 // Only rendered when the active backend is unreachable; keep the modal out of
 // the default root graph.
 const ManageBackendsModal = React.lazy(() =>
@@ -101,6 +116,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <body data-agent-server-ui="" className="m-0">
         <AgentServerUIRoot contentClassName="min-h-screen">
           <ColorThemeApplier />
+          <ServiceWorkerRegistrar />
           {children}
           <Toaster toastOptions={TOAST_OPTIONS} />
           <div id="modal-portal-exit" />
@@ -218,6 +234,10 @@ export const links: LinksFunction = () => [
     rel: "icon",
     type: "image/svg+xml",
     href: buildAgentCanvasPath("/favicon.svg"),
+  },
+  {
+    rel: "manifest",
+    href: buildAgentCanvasPath("/site.webmanifest"),
   },
 ];
 
