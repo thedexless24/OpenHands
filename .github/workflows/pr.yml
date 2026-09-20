@@ -14,6 +14,12 @@ on:
     # force-pushed release PR.
     types: [opened, edited, reopened, synchronize]
 
+# Burst control (kanban t_cacbe734, 2026-09-20): a superseded push on the same ref
+# cancels its queued predecessor instead of stacking it behind the shared runner lane.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   pr-title:
     permissions:

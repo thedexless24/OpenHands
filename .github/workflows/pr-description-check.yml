@@ -8,6 +8,12 @@ on:
     pull_request_target:
         types: [opened, edited, reopened, ready_for_review, synchronize]
 
+# Burst control (kanban t_cacbe734, 2026-09-20): a superseded push on the same ref
+# cancels its queued predecessor instead of stacking it behind the shared runner lane.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
     contents: read
     pull-requests: read
