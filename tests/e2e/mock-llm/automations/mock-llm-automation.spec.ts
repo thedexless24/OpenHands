@@ -87,11 +87,24 @@ async function listAutomations(
   );
 }
 
-/** Poll the main conversation for the automation ID returned by the create command. */
+/**
+ * Poll for the automation created by the agent's terminal command.
+ *
+ * The conversation transcript is the primary source (it carries the
+ * automation id echoed by the create command), but the scripted mock-LLM
+ * trajectory is positional: when the agent-server makes a different number
+ * of internal LLM calls than the padding assumes, a terminal command is
+ * consumed by an internal call and the id never lands in the transcript even
+ * though the automation was created. The real automation backend is the
+ * source of truth for "was the automation created", so fall back to listing
+ * automations by name. Step 1 removes stale automations with this name first,
+ * so any match here is the one this test just created.
+ */
 async function waitForCreatedAutomationId(
   request: import("@playwright/test").APIRequestContext,
   conversationId: string,
-  timeoutMs = 30_000,
+  name: string,
+  timeoutMs = 60_000,
 ) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -108,10 +121,17 @@ async function waitForCreatedAutomationId(
       const match = text.match(/automation_id\\?":\\?"([0-9a-f-]{36})/i);
       if (match) return match[1];
     }
+    const data = await listAutomations(request);
+    const automations = (data.automations ?? data.items ?? []) as Array<{
+      id: string;
+      name: string;
+    }>;
+    const created = automations.find((candidate) => candidate.name === name);
+    if (created) return created.id;
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
   throw new Error(
-    `Created automation ID was not reported after ${timeoutMs}ms`,
+    `Created automation "${name}" was not reported after ${timeoutMs}ms`,
   );
 }
 
@@ -439,6 +459,7 @@ test.describe("mock-LLM automation lifecycle", () => {
       createdAutomationId = await waitForCreatedAutomationId(
         request,
         conversationId,
+        AUTOMATION_NAME,
       );
       const created = await getAutomation(request, createdAutomationId);
       automationIds.add(created.id);
