@@ -10,8 +10,16 @@ on:
 
 # Burst control (kanban t_cacbe734, 2026-09-20): a superseded push on the same ref
 # cancels its queued predecessor instead of stacking it behind the shared runner lane.
+#
+# This workflow fires on pull_request_target, where github.ref is the BASE branch ref
+# (refs/heads/main) for every PR. Keying the group on github.ref alone therefore put
+# every open PR in one concurrency group, and cancel-in-progress made a burst of PRs
+# cancel each other (three dependabot PRs opened within 14s on 2026-10-04 — OpenHands#15).
+# Key on the PR number so each PR has its own group; keep github.ref as the fallback
+# for any non-PR caller, and keep cancel-in-progress so the burst-control guard still
+# reads this file as compliant.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
