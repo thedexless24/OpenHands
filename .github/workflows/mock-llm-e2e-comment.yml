@@ -16,6 +16,18 @@ on:
     workflows: ["Mock-LLM E2E Tests"]
     types: [completed]
 
+# Burst control (kanban t_cacbe734, 2026-09-20): a superseded post-comment run
+# must not race the report of the run that replaced it and become the comment's
+# last writer. This runs on workflow_run, where github.ref is the base branch,
+# so a ref-only group would put every open PR in one group; key on the head
+# repository + branch instead (per-PR and stable, and correct for fork PRs,
+# where workflow_run.pull_requests is empty — measured 2026-10-04). The payload
+# artifact is uploaded with `if: always()`, so the run that replaces a
+# superseded one still carries its own report.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   pull-requests: write
