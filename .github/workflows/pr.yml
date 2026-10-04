@@ -16,8 +16,17 @@ on:
 
 # Burst control (kanban t_cacbe734, 2026-09-20): a superseded push on the same ref
 # cancels its queued predecessor instead of stacking it behind the shared runner lane.
+#
+# Grouped by PR number (kanban t_ba26f42c, 2026-10-04): this caller runs on
+# pull_request_target, where github.ref resolves to the BASE branch (main). Keying the
+# group on github.ref alone therefore put every open PR into one group — a burst of
+# dependabot PRs cancelled each other's title check instead of only superseding their own
+# ref (OpenHands#15: three PRs opened 05:18:36-49Z on 2026-10-04, the newest run cancelled
+# the other two, so this label step never ran and no `type:` label was applied). The PR
+# number scopes cancellation to a new push on the same PR, which is what burst control
+# is for; the github.ref fallback keeps any non-PR caller of this file grouped as before.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
