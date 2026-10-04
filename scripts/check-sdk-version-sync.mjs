@@ -38,7 +38,7 @@
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import process from "node:process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -426,4 +426,15 @@ export {
   AUTOMATION_PACKAGE_NAME,
 };
 
-main();
+// Run the check only when this file is executed directly
+// (`node scripts/check-sdk-version-sync.mjs`). Importing it must have no side
+// effects: main() fetches from PyPI and logs, and when it is triggered by a
+// test import those logs land after the test file has finished, which vitest
+// reports as unhandled "onUserConsoleLog pending" rejections that fail the run.
+const executedDirectly =
+  Boolean(process.argv[1]) &&
+  import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (executedDirectly) {
+  main();
+}

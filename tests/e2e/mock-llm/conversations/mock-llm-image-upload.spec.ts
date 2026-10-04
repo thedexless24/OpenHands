@@ -90,19 +90,26 @@ test.describe("mock-LLM image upload", () => {
     //    "understand" the image — we just want a reply that proves the LLM was
     //    called and the conversation completed successfully.
     //
-    //    ⚠️  Padding note (mirrors the automation test's pattern):
-    //    Public skills are bundled from @openhands/extensions at build time.
-    //    The agent-server may make one internal LLM call for skill-analysis
-    //    before the agent loop starts, consuming one trajectory slot.
-    //    Turn 0 is a throwaway empty response that absorbs this internal call.
-    //    Turn 1 is the agent's actual reply (IMAGE_REPLY_TOKEN).
-    //    Turn 2 is a safety buffer in case a follow-up internal call is made.
+    //    Padding note: the mock LLM is one FIFO queue shared by every caller
+    //    (skill-analysis, conversation-title generation, the agent loop), and
+    //    how many internal calls land before the agent's first turn varies
+    //    between runs — skill analysis only fires when a skill activates, and
+    //    title generation races the agent loop for the first slot.
+    //    Turn 0 is a throwaway empty response that absorbs an internal call.
+    //    The remaining turns all carry the reply token so the agent's turn
+    //    returns it no matter how many internal calls came first. A fixed
+    //    "agent reply, then buffer" shape (the earlier form here) let a second
+    //    internal call take the token turn: the title became IMAGE_REPLY_TOKEN
+    //    while the transcript got only empty-response nudges, and the UI wait
+    //    below timed out on a reply that was never rendered.
 
     await resetMockLLM(request); // clears request history too
     await registerTrajectory(request, TRAJECTORY_NAME, [
-      { text: "" },              // 0: padding — absorbs any internal skill-activation call
+      { text: "" }, // 0: padding — absorbs an internal skill-activation call
       { text: IMAGE_REPLY_TOKEN }, // 1: agent's actual reply
-      { text: "" },              // 2: safety buffer for any follow-up internal call
+      { text: IMAGE_REPLY_TOKEN }, // 2: fallback if an internal call took turn 1
+      { text: IMAGE_REPLY_TOKEN }, // 3: safety buffer
+      { text: IMAGE_REPLY_TOKEN }, // 4: safety buffer
     ]);
     await activateTrajectory(request, TRAJECTORY_NAME);
 
